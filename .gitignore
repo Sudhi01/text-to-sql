@@ -1,0 +1,38 @@
+# Environment variables (MOST IMPORTANT - protects API keys)
+.env
+.env.*
+*.env
+
+# Docker volumes
+pgdata/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ---- ADD THESE BASED ON YOUR PROJECT ----
+
+# Virtual environment (your venv folder at root)
+venv/
+C:\Users\Sudheera\Desktop\Text-to-SQL\venv/
+
+# Logs (you have audit.log)
+*.log
+audit.log
+
+# Eval results (auto-generated, has timestamp in name)
+eval_results_*.json
+
+# Test environment file
+test_env.py
+
+# Pyvenv config (venv metadata)
+pyvenv.cfg
+CACHEDIR.TAG

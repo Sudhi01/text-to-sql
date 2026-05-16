@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+psycopg2-binary
+sqlalchemy
+openai
+sqlparse
+numpy
+streamlit
+requests
+pydantic

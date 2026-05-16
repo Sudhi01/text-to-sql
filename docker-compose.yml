@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — seeded with sample data
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15
+    container_name: text2sql-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # FastAPI — Text-to-SQL API
+  # ---------------------------------------------------------------------------
+  api:
+    build: .
+    container_name: text2sql-api
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+
+  # ---------------------------------------------------------------------------
+  # Streamlit — Frontend
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: python:3.11-slim
+    container_name: text2sql-frontend
+    working_dir: /app
+    command: >
+      bash -c "pip install streamlit requests --quiet &&
+               streamlit run app.py --server.port 8501 --server.address 0.0.0.0"
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    volumes:
+      - ./app:/app
+
+volumes:
+  pgdata:
