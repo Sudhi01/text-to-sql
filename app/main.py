@@ -14,10 +14,10 @@ import json
 import os
 from datetime import datetime, timezone
 
-from llm import generate_sql
-from db import run_query, engine, execute_fn
-from schema import get_schema, format_schema_for_prompt
-from phase3 import run_quality_checks
+from app.llm import generate_sql
+from app.db import run_query, engine, execute_fn
+from app.schema import get_schema, format_schema_for_prompt
+from app.phase3 import run_quality_checks
 
 app = FastAPI(title="Text-to-SQL API", version="1.0.0")
 

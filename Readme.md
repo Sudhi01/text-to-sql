@@ -1,4 +1,11 @@
-"Built a Text-to-SQL system with 78.1% execution accuracy,
-100% ambiguity detection, 96% guardrail effectiveness,
-and hallucination flagging across 50 automated test cases.
-Zero destructive operations executed." 65% Hallucination detected.
+---
+title: Text To Sql
+emoji: 😻
+colorFrom: blue
+colorTo: yellow
+sdk: docker
+pinned: false
+license: other
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference

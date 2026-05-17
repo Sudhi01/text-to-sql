@@ -18,13 +18,8 @@ import sqlparse
 from sqlparse.sql import Statement, Where, Parenthesis
 from sqlparse.tokens import Keyword, DDL, DML
 
-from config import (
-    ROW_LIMIT,
-    MAX_SCAN_ROWS,
-    MAX_SUBQUERY_DEPTH,
-    FORBIDDEN_KEYWORDS,
-)
-from audit import log_query
+from app.config import (ROW_LIMIT, MAX_SCAN_ROWS, MAX_SUBQUERY_DEPTH, FORBIDDEN_KEYWORDS)
+from app.audit import log_query
 
 logger = logging.getLogger(__name__)
 

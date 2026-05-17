@@ -17,9 +17,9 @@ from typing import List, Optional
 from openai import OpenAI, OpenAIError
 import os
 
-from schema import get_schema, format_schema_for_prompt
-from schema_filter import filter_relevant_tables
-from ambiguity import check_ambiguity, ClarificationRequest
+from app.schema import get_schema, format_schema_for_prompt
+from app.schema_filter import filter_relevant_tables
+from app.ambiguity import check_ambiguity, ClarificationRequest
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

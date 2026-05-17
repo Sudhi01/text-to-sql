@@ -7,8 +7,8 @@ import time
 import psycopg2
 from sqlalchemy import create_engine
 
-from guardrails import validate_sql, check_explain_scan
-from audit import log_query
+from app.guardrails import validate_sql, check_explain_scan
+from app.audit import log_query
 
 # ---------------------------------------------------------------------------
 # DB config
