@@ -10,7 +10,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from config import AUDIT_LOG_PATH
+from app.config import AUDIT_LOG_PATH
 
 # Also send to Python logger for console visibility
 logger = logging.getLogger(__name__)
