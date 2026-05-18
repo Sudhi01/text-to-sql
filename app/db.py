@@ -11,24 +11,23 @@ from sqlalchemy import create_engine
 from app.guardrails import validate_sql, check_explain_scan
 from app.audit import log_query
 
+# ---------------------------------------------------------------------------
+# DB config — supports local and cloud (Supabase)
+# ---------------------------------------------------------------------------
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # Running on Hugging Face / cloud with Supabase
     engine = create_engine(DATABASE_URL)
-    
-    # Parse manually without urlparse
-    # Format: postgresql://user:password@host:port/dbname
     temp = DATABASE_URL.replace("postgresql://", "")
     user_pass, rest = temp.split("@")
-    user, password = user_pass.split(":")
-    host_port, dbname = rest.split("/")
+    user, password = user_pass.split(":", 1)
+    host_port, dbname = rest.split("/", 1)
     if ":" in host_port:
         host, port = host_port.split(":")
     else:
         host = host_port
         port = 5432
-
     DB_CONFIG = {
         "dbname": dbname,
         "user": user,
@@ -37,7 +36,6 @@ if DATABASE_URL:
         "port": int(port),
     }
 else:
-    # Running locally
     DB_CONFIG = {
         "dbname": "postgres",
         "user": "postgres",
@@ -50,33 +48,6 @@ else:
         f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
     )
 
-import time
-import psycopg2
-from sqlalchemy import create_engine
-
-from app.guardrails import validate_sql, check_explain_scan
-from app.audit import log_query
-
-# ---------------------------------------------------------------------------
-# DB config
-# ---------------------------------------------------------------------------
-
-DB_CONFIG = {
-    "dbname": "postgres",
-    "user": "postgres",
-    "password": "postgres",
-    "host": "localhost",
-    "port": 5432,
-}
-
-# ---------------------------------------------------------------------------
-# SQLAlchemy engine — Phase 1 schema extractor
-# ---------------------------------------------------------------------------
-
-engine = create_engine(
-    f"postgresql+psycopg2://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
-    f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
-)
 
 # ---------------------------------------------------------------------------
 # Main query runner — Phase 2
@@ -86,7 +57,6 @@ def run_query(sql: str, question: str = "") -> dict:
     conn = None
     cur = None
 
-    # Step 1: Guardrail check + LIMIT injection (no DB needed)
     pre_check = validate_sql(sql, question=question)
     if not pre_check.passed:
         return {
@@ -109,11 +79,9 @@ def run_query(sql: str, question: str = "") -> dict:
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
 
-        # Step 2: Fetch EXPLAIN plan
         cur.execute(f"EXPLAIN {safe_sql}")
         explain_plan = [row[0] for row in cur.fetchall()]
 
-        # Step 3: EXPLAIN scan check — block heavy queries
         scan_block = check_explain_scan(explain_plan)
         if scan_block:
             log_query(question, safe_sql, blocked=True, reason=scan_block)
@@ -131,7 +99,6 @@ def run_query(sql: str, question: str = "") -> dict:
                 },
             }
 
-        # Step 4: Execute in read-only transaction
         start = time.time()
         cur.execute("BEGIN")
         cur.execute("SET TRANSACTION READ ONLY")
@@ -194,7 +161,7 @@ def run_query(sql: str, question: str = "") -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Phase 3 execute_fn — used by run_quality_checks() for multi-query validation
+# Phase 3 execute_fn
 # ---------------------------------------------------------------------------
 
 def execute_fn(sql: str) -> dict:

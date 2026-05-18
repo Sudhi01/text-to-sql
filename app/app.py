@@ -16,7 +16,7 @@ import requests
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-API_BASE = "http://localhost:8000"
+API_BASE = "https://sudhi01-text-to-sql.hf.space"
 
 st.set_page_config(page_title="Text-to-SQL", layout="wide")
 st.title("Text-to-SQL Interface")
