@@ -3,6 +3,34 @@ db.py — Unified Execution Layer
 Phase 1 + Phase 2 + Phase 3 integrated
 """
 
+import os
+from urllib.parse import urlparse
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    parsed = urlparse(DATABASE_URL)
+    DB_CONFIG = {
+        "dbname": parsed.path[1:],
+        "user": parsed.username,
+        "password": parsed.password,
+        "host": parsed.hostname,
+        "port": parsed.port or 5432,
+    }
+    engine = create_engine(DATABASE_URL)
+else:
+    DB_CONFIG = {
+        "dbname": "postgres",
+        "user": "postgres",
+        "password": "postgres",
+        "host": "localhost",
+        "port": 5432,
+    }
+    engine = create_engine(
+        f"postgresql+psycopg2://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
+        f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
+    )
+
 import time
 import psycopg2
 from sqlalchemy import create_engine
