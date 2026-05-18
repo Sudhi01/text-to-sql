@@ -4,21 +4,40 @@ Phase 1 + Phase 2 + Phase 3 integrated
 """
 
 import os
-from urllib.parse import urlparse
+import time
+import psycopg2
+from sqlalchemy import create_engine
+
+from app.guardrails import validate_sql, check_explain_scan
+from app.audit import log_query
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    parsed = urlparse(DATABASE_URL)
-    DB_CONFIG = {
-        "dbname": parsed.path[1:],
-        "user": parsed.username,
-        "password": parsed.password,
-        "host": parsed.hostname,
-        "port": parsed.port or 5432,
-    }
+    # Running on Hugging Face / cloud with Supabase
     engine = create_engine(DATABASE_URL)
+    
+    # Parse manually without urlparse
+    # Format: postgresql://user:password@host:port/dbname
+    temp = DATABASE_URL.replace("postgresql://", "")
+    user_pass, rest = temp.split("@")
+    user, password = user_pass.split(":")
+    host_port, dbname = rest.split("/")
+    if ":" in host_port:
+        host, port = host_port.split(":")
+    else:
+        host = host_port
+        port = 5432
+
+    DB_CONFIG = {
+        "dbname": dbname,
+        "user": user,
+        "password": password,
+        "host": host,
+        "port": int(port),
+    }
 else:
+    # Running locally
     DB_CONFIG = {
         "dbname": "postgres",
         "user": "postgres",
