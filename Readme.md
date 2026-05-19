@@ -25,7 +25,7 @@ Type a question like "total orders per customer" and the system:
  Screenshots
 
  ### Asking a question and getting results
- [Demo](https://raw.githubusercontent.com/Sudhi01/text-to-sql/main/assests/Screenshots/demo.png)
+ ![Demo](https://raw.githubusercontent.com/Sudhi01/text-to-sql/main/assests/Screenshots/demo.png)
 
 
 
