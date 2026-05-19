@@ -18,7 +18,12 @@ from app.audit import log_query
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={"connect_timeout": 10}
+)
     temp = DATABASE_URL.replace("postgresql://", "")
     user_pass, rest = temp.split("@")
     user, password = user_pass.split(":", 1)
