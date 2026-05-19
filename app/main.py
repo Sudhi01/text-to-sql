@@ -10,6 +10,9 @@ Phase 4: Full API with all endpoints
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+from contextlib import asynccontextmanager
+from sqlalchemy import text
+import asyncio
 import json
 import os
 from datetime import datetime, timezone
@@ -19,11 +22,35 @@ from app.db import run_query, engine, execute_fn
 from app.schema import get_schema, format_schema_for_prompt
 from app.phase3 import run_quality_checks
 
-app = FastAPI(title="Text-to-SQL API", version="1.0.0")
+
+# ---------------------------------------------------------------------------
+# Keep-alive task — pings DB every 5 minutes to prevent Supabase timeout
+# ---------------------------------------------------------------------------
+
+async def keep_alive():
+    while True:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except Exception:
+            pass
+        await asyncio.sleep(300)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(keep_alive())
+    yield
+
+
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
+
+app = FastAPI(title="Text-to-SQL API", version="1.0.0", lifespan=lifespan)
 
 # ---------------------------------------------------------------------------
 # In-memory history store (per server session)
-# For production, replace with a database table
 # ---------------------------------------------------------------------------
 HISTORY = []
 FEEDBACK_LOG = "feedback.jsonl"
@@ -52,15 +79,12 @@ class FeedbackRequest(BaseModel):
 def query(req: QueryRequest):
     question = req.question
 
-    # ------------------------------------------------------------------
-    # Phase 1: Generate SQL (schema-aware, ambiguity-checked)
-    # ------------------------------------------------------------------
+    # Phase 1: Generate SQL
     try:
         gen = generate_sql(question, engine)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Ambiguity — return clarification options instead of guessing
     if gen.clarification_needed:
         return {
             "status": "clarification_needed",
@@ -78,12 +102,9 @@ def query(req: QueryRequest):
 
     sql = gen.sql
 
-    # ------------------------------------------------------------------
-    # Phase 2: Run query (guardrails + EXPLAIN + execution inside db.py)
-    # ------------------------------------------------------------------
+    # Phase 2: Run query
     result = run_query(sql, question=question)
 
-    # Blocked by guardrails
     if result["status"] == "blocked":
         entry = _make_history_entry(
             question=question,
@@ -95,9 +116,7 @@ def query(req: QueryRequest):
         HISTORY.append(entry)
         return entry
 
-    # ------------------------------------------------------------------
-    # Phase 3: Hallucination detection + confidence scoring
-    # ------------------------------------------------------------------
+    # Phase 3: Hallucination detection
     quality_input = {
         "status": result["status"],
         "row_count": result["row_count"],
@@ -112,9 +131,6 @@ def query(req: QueryRequest):
         expected_tables=req.expected_tables or gen.tables_used,
     )
 
-    # ------------------------------------------------------------------
-    # Build standardized response
-    # ------------------------------------------------------------------
     entry = _make_history_entry(
         question=question,
         sql=sql,
@@ -142,7 +158,7 @@ def _make_history_entry(question, sql, result, quality, gen):
         },
         "guardrail": result.get("guardrail", {}),
         "quality": quality,
-        "feedback": None,   # filled by /v1/feedback
+        "feedback": None,
     }
 
 
@@ -152,7 +168,6 @@ def _make_history_entry(question, sql, result, quality, gen):
 
 @app.get("/v1/schema")
 def schema():
-    """Return live DB schema extracted via SQLAlchemy."""
     try:
         full_schema = get_schema(engine)
         return {
@@ -170,7 +185,6 @@ def schema():
 
 @app.get("/v1/history")
 def history(limit: int = 20):
-    """Return past queries for this session, newest first."""
     return {
         "status": "success",
         "count": len(HISTORY),
@@ -184,24 +198,16 @@ def history(limit: int = 20):
 
 @app.post("/v1/feedback")
 def feedback(req: FeedbackRequest):
-    """
-    Mark a query result as correct or incorrect.
-    - Correct results → saved as few-shot examples
-    - Incorrect results → saved as eval test cases
-    """
-    # Find the history entry
     entry = next((h for h in HISTORY if h["query_id"] == req.query_id), None)
     if not entry:
         raise HTTPException(status_code=404, detail=f"Query ID {req.query_id} not found")
 
-    # Update in-memory history
     entry["feedback"] = {
         "correct": req.correct,
         "comment": req.comment,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-    # Persist feedback to JSONL file
     record = {
         "query_id": req.query_id,
         "question": entry["question"],
@@ -209,7 +215,6 @@ def feedback(req: FeedbackRequest):
         "correct": req.correct,
         "comment": req.comment,
         "timestamp": entry["feedback"]["timestamp"],
-        # Tag for downstream use
         "use_as": "few_shot" if req.correct else "eval_test_case",
     }
 
