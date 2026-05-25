@@ -240,7 +240,7 @@ def multi_query_validation(
         "agree": agree,
         "reason": reason,
         "alternative_sql": alt_sql,
-        "confidence_boost": 0.15 if agree else -0.2,
+        "confidence_boost": 0.05 if agree else -0.2,  # reduced from 0.15
     }
 
 
@@ -367,8 +367,7 @@ def run_quality_checks(
 
     # ------------------------------------------------------------------
     # E. MULTI-QUERY VALIDATION
-    # Boost only applies when confidence < 1.0
-    # Penalty always applies
+    # Penalty always applies, boost only when confidence < 1.0
     # ------------------------------------------------------------------
     e_delta = 0.0
     if execute_fn is not None:
@@ -376,10 +375,8 @@ def run_quality_checks(
         alternative_sql = mv.get("alternative_sql")
         boost = mv["confidence_boost"]
         if boost < 0:
-            # Always apply penalties
             e_delta = boost
         elif boost > 0 and confidence < 1.0:
-            # Only boost if not already perfect
             e_delta = boost
         if mv["agree"] is False:
             flags.append(f"multi_query_disagreement:{mv['reason']}")
@@ -404,16 +401,16 @@ def run_quality_checks(
 
     # ------------------------------------------------------------------
     # G. STRUCTURAL BOOST
-    # Only applies when confidence < 1.0
+    # Only applies when confidence < 1.0, reduced values
     # ------------------------------------------------------------------
     g_delta = 0.0
     if confidence < 1.0:
         if structure["has_aggregate"]:
-            g_delta += 0.05
-        if structure["has_join"]:
-            g_delta += 0.05
-        if structure["has_limit"]:
             g_delta += 0.02
+        if structure["has_join"]:
+            g_delta += 0.02
+        if structure["has_limit"]:
+            g_delta += 0.01
 
     confidence += g_delta
     signal_breakdown["structural_boost"] = round(g_delta, 3)
