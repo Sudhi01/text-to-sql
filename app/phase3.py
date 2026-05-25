@@ -240,7 +240,7 @@ def multi_query_validation(
         "agree": agree,
         "reason": reason,
         "alternative_sql": alt_sql,
-        "confidence_boost": 0.05 if agree else -0.2,  # reduced from 0.15
+        "confidence_boost": 0.05 if agree else -0.2,
     }
 
 
@@ -334,12 +334,13 @@ def run_quality_checks(
 
     # ------------------------------------------------------------------
     # C. BACK-TRANSLATION
+    # Threshold relaxed to 0.65 to avoid false positives
     # ------------------------------------------------------------------
     c_delta = 0.0
     generated_q = sql_to_question(sql)
     if generated_q is not None:
         sem_score = semantic_match(question, generated_q)
-        if sem_score < 0.75:
+        if sem_score < 0.65:
             c_delta -= 0.35
             flags.append("semantic_mismatch")
     else:
@@ -401,7 +402,7 @@ def run_quality_checks(
 
     # ------------------------------------------------------------------
     # G. STRUCTURAL BOOST
-    # Only applies when confidence < 1.0, reduced values
+    # Only applies when confidence < 1.0
     # ------------------------------------------------------------------
     g_delta = 0.0
     if confidence < 1.0:
